@@ -1,0 +1,331 @@
+// AI Agent Module - Groq-powered intelligent agent for TenHummingbirds
+// Orchestrates browser automation and provides intelligent web interaction
+
+import { TenHummingbirdsAI } from './groq-ai'
+import { hummBrowser, HummCommand, HummObservation } from './humm-browser'
+
+export interface AgentTask {
+  id: string
+  type: 'research' | 'scrape' | 'monitor' | 'navigate' | 'automation'
+  description: string
+  userQuery: string
+  targetUrl?: string
+  selector?: string
+  parameters?: any
+}
+
+export interface AgentResult {
+  taskId: string
+  success: boolean
+  data?: any
+  observations: HummObservation[]
+  summary: string
+  timestamp: number
+  executionTime: number
+}
+
+export interface AgentState {
+  isActive: boolean
+  currentTask?: AgentTask
+  browserReady: boolean
+  lastActivity: number
+}
+
+export class TenHummingbirdsAgent {
+  private state: AgentState = {
+    isActive: false,
+    browserReady: false,
+    lastActivity: Date.now()
+  }
+
+  async initialize(): Promise<void> {
+    try {
+      console.log('🤖 Initializing TenHummingbirds AI Agent...')
+      
+      // Initialize the browser tool
+      await hummBrowser.initialize()
+      
+      this.state.browserReady = true
+      this.state.isActive = true
+      
+      console.log('✅ TenHummingbirds AI Agent ready!')
+    } catch (error) {
+      console.error('❌ Failed to initialize AI Agent:', error)
+      throw error
+    }
+  }
+
+  async executeTask(task: AgentTask): Promise<AgentResult> {
+    const startTime = Date.now()
+    const observations: HummObservation[] = []
+    
+    try {
+      console.log(`🎯 Executing task: ${task.description}`)
+      
+      this.state.currentTask = task
+      this.state.lastActivity = Date.now()
+      
+      let result: any
+      
+      switch (task.type) {
+        case 'research':
+          result = await this.performResearch(task, observations)
+          break
+          
+        case 'scrape':
+          result = await this.performScraping(task, observations)
+          break
+          
+        case 'navigate':
+          result = await this.performNavigation(task, observations)
+          break
+          
+        case 'monitor':
+          result = await this.performMonitoring(task, observations)
+          break
+          
+        default:
+          throw new Error(`Unknown task type: ${task.type}`)
+      }
+      
+      // Generate AI summary of the task execution
+      const summary = await this.generateTaskSummary(task, observations, result)
+      
+      const executionTime = Date.now() - startTime
+      
+      return {
+        taskId: task.id,
+        success: true,
+        data: result,
+        observations,
+        summary,
+        timestamp: startTime,
+        executionTime
+      }
+      
+    } catch (error) {
+      const executionTime = Date.now() - startTime
+      const errorSummary = `Task failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      
+      return {
+        taskId: task.id,
+        success: false,
+        observations,
+        summary: errorSummary,
+        timestamp: startTime,
+        executionTime
+      }
+    } finally {
+      this.state.currentTask = undefined
+    }
+  }
+
+  private async performResearch(task: AgentTask, observations: HummObservation[]): Promise<any> {
+    // Research task: Navigate to URL, extract information, analyze content
+    
+    if (!task.targetUrl) {
+      // Use AI to determine the best website for research
+      const aiResponse = await TenHummingbirdsAI.generateResponse(
+        `What is the best website to research: ${task.userQuery}? Return just the URL.`,
+        { analysis_type: 'strategy' }
+      )
+      task.targetUrl = this.extractUrlFromResponse(aiResponse.text)
+    }
+    
+    // Navigate to the target URL
+    const navCommand: HummCommand = { action: 'navigate', url: task.targetUrl }
+    const navResult = await hummBrowser.executeCommand(navCommand)
+    observations.push(navResult)
+    
+    if (!navResult.success) {
+      throw new Error(`Failed to navigate to ${task.targetUrl}`)
+    }
+    
+    // Extract page content
+    const extractCommand: HummCommand = { action: 'extract' }
+    const extractResult = await hummBrowser.executeCommand(extractCommand)
+    observations.push(extractResult)
+    
+    if (!extractResult.success) {
+      throw new Error('Failed to extract page content')
+    }
+    
+    // Use AI to analyze and summarize the extracted content
+    const analysisPrompt = `
+      User Query: ${task.userQuery}
+      
+      Extracted Content: ${extractResult.content}
+      
+      Please analyze this content and provide relevant insights for the user's query. 
+      Focus on trading and financial information if applicable.
+    `
+    
+    const aiAnalysis = await TenHummingbirdsAI.generateResponse(analysisPrompt, {
+      analysis_type: 'fundamental',
+      user_style: 'professional'
+    })
+    
+    return {
+      url: task.targetUrl,
+      pageTitle: navResult.pageTitle,
+      extractedContent: extractResult.data,
+      aiAnalysis: aiAnalysis.text,
+      confidence: aiAnalysis.confidence
+    }
+  }
+
+  private async performScraping(task: AgentTask, observations: HummObservation[]): Promise<any> {
+    // Scraping task: Navigate and extract specific data points
+    
+    if (!task.targetUrl) {
+      throw new Error('Target URL required for scraping task')
+    }
+    
+    // Navigate to target
+    const navCommand: HummCommand = { action: 'navigate', url: task.targetUrl }
+    const navResult = await hummBrowser.executeCommand(navCommand)
+    observations.push(navResult)
+    
+    // Extract specific elements if selector provided
+    if (task.selector) {
+      const extractCommand: HummCommand = { action: 'extract', selector: task.selector }
+      const extractResult = await hummBrowser.executeCommand(extractCommand)
+      observations.push(extractResult)
+      
+      return {
+        url: task.targetUrl,
+        selector: task.selector,
+        data: extractResult.data
+      }
+    }
+    
+    // Extract full page content
+    const extractCommand: HummCommand = { action: 'extract' }
+    const extractResult = await hummBrowser.executeCommand(extractCommand)
+    observations.push(extractResult)
+    
+    return {
+      url: task.targetUrl,
+      fullContent: extractResult.data
+    }
+  }
+
+  private async performNavigation(task: AgentTask, observations: HummObservation[]): Promise<any> {
+    // Navigation task: Simple page navigation and state capture
+    
+    if (!task.targetUrl) {
+      throw new Error('Target URL required for navigation task')
+    }
+    
+    const navCommand: HummCommand = { action: 'navigate', url: task.targetUrl }
+    const navResult = await hummBrowser.executeCommand(navCommand)
+    observations.push(navResult)
+    
+    // Take a screenshot for verification
+    const screenshotCommand: HummCommand = { action: 'screenshot' }
+    const screenshotResult = await hummBrowser.executeCommand(screenshotCommand)
+    observations.push(screenshotResult)
+    
+    return {
+      url: task.targetUrl,
+      pageTitle: navResult.pageTitle,
+      screenshot: screenshotResult.screenshot,
+      navigationSuccess: navResult.success
+    }
+  }
+
+  private async performMonitoring(task: AgentTask, observations: HummObservation[]): Promise<any> {
+    // Monitoring task: Periodically check a page for changes
+    // This is a simplified version - full implementation would use intervals
+    
+    if (!task.targetUrl) {
+      throw new Error('Target URL required for monitoring task')
+    }
+    
+    const navCommand: HummCommand = { action: 'navigate', url: task.targetUrl }
+    const navResult = await hummBrowser.executeCommand(navCommand)
+    observations.push(navResult)
+    
+    const extractCommand: HummCommand = { action: 'extract', selector: task.selector }
+    const extractResult = await hummBrowser.executeCommand(extractCommand)
+    observations.push(extractResult)
+    
+    return {
+      url: task.targetUrl,
+      monitoredData: extractResult.data,
+      timestamp: Date.now()
+    }
+  }
+
+  private async generateTaskSummary(
+    task: AgentTask, 
+    observations: HummObservation[], 
+    result: any
+  ): Promise<string> {
+    const observationSummary = observations
+      .filter(obs => obs.success)
+      .map(obs => `${obs.timestamp}: ${obs.data ? JSON.stringify(obs.data) : 'No data'}`)
+      .join('\n')
+    
+    const summaryPrompt = `
+      Task: ${task.description}
+      User Query: ${task.userQuery}
+      
+      Execution Steps:
+      ${observationSummary}
+      
+      Result: ${JSON.stringify(result)}
+      
+      Please provide a concise, user-friendly summary of what was accomplished.
+    `
+    
+    try {
+      const aiSummary = await TenHummingbirdsAI.generateResponse(summaryPrompt, {
+        user_style: 'professional'
+      })
+      
+      return aiSummary.text
+    } catch (error) {
+      return `Task completed: ${task.description}. Check the detailed results for more information.`
+    }
+  }
+
+  private extractUrlFromResponse(response: string): string {
+    // Simple URL extraction - could be enhanced with more sophisticated parsing
+    const urlRegex = /(https?:\/\/[^\s]+)/
+    const match = response.match(urlRegex)
+    
+    if (match) {
+      return match[1]
+    }
+    
+    // Fallback URLs for common research topics
+    if (response.toLowerCase().includes('finance') || response.toLowerCase().includes('stock')) {
+      return 'https://finance.yahoo.com'
+    }
+    
+    return 'https://google.com'
+  }
+
+  async getState(): Promise<AgentState> {
+    return { ...this.state }
+  }
+
+  async getBrowserState(): Promise<HummObservation> {
+    return await hummBrowser.getCurrentState()
+  }
+
+  async shutdown(): Promise<void> {
+    try {
+      await hummBrowser.close()
+      this.state.isActive = false
+      this.state.browserReady = false
+      console.log('🛑 TenHummingbirds AI Agent shutdown complete')
+    } catch (error) {
+      console.error('❌ Error during agent shutdown:', error)
+    }
+  }
+}
+
+// Singleton instance for the application
+export const tenHummingbirdsAgent = new TenHummingbirdsAgent()
