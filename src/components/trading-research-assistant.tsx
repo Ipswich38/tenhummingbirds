@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Search, TrendingUp, TrendingDown, AlertTriangle, DollarSign, Clock, BarChart3, Zap, Target, Shield, Activity, PieChart, Calculator, Settings, Send, X, Minimize2, Maximize2, Bell, Star, Eye, Plus, Heart, Filter, Bookmark, Bot, Globe, Camera, Play, Square, RefreshCw } from "lucide-react"
+import { Search, TrendingUp, TrendingDown, AlertTriangle, DollarSign, Clock, BarChart3, Zap, Target, Shield, Activity, PieChart, Calculator, Settings, Send, X, Minimize2, Maximize2, Bell, Star, Eye, Plus, Heart, Filter, Bookmark, Bot, Globe, Camera, Play, Square, RefreshCw, Image, Palette, TrendingDownIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -420,6 +420,33 @@ export function TradingResearchAssistant({ onLogout }: TradingResearchAssistantP
                         {task.success ? 'Success' : 'Failed'}
                       </Badge>
                     </div>
+                    
+                    {/* Display generated image if available */}
+                    {task.data?.imageBase64 && (
+                      <div className="mt-3 mb-2">
+                        <img 
+                          src={task.data.imageBase64} 
+                          alt={task.data.prompt || 'Generated image'}
+                          className="w-full h-32 object-cover rounded-xl border border-border-subtle"
+                        />
+                        <div className="mt-2 text-xs text-text-tertiary">
+                          <p>Model: {task.data.model}</p>
+                          <p>Type: {task.data.type} • Style: {task.data.style}</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Display screenshot if available */}
+                    {task.data?.screenshot && !task.data?.imageBase64 && (
+                      <div className="mt-3 mb-2">
+                        <img 
+                          src={task.data.screenshot} 
+                          alt="Browser screenshot"
+                          className="w-full h-32 object-cover rounded-xl border border-border-subtle"
+                        />
+                      </div>
+                    )}
+                    
                     <div className="text-text-tertiary text-xs">
                       Execution time: {task.executionTime}ms
                     </div>
@@ -501,6 +528,176 @@ export function TradingResearchAssistant({ onLogout }: TradingResearchAssistantP
                 <span>Resolution: 1366x768</span>
                 <span>Status: Ready</span>
                 <span>FPS: 2</span>
+              </div>
+            </div>
+          </div>
+
+          {/* AI Image Generation */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-text-primary">AI Image Generation</h3>
+              <div className="flex gap-2">
+                <Button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/ai-agent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          action: 'execute',
+                          task: {
+                            type: 'generate_image',
+                            description: 'Generate trading chart visualization',
+                            userQuery: 'Create a professional stock market chart showing bullish trend with candlesticks, moving averages, and volume indicators',
+                            parameters: {
+                              imageType: 'chart',
+                              style: 'financial'
+                            }
+                          }
+                        })
+                      })
+                      const data = await response.json()
+                      if (data.success) {
+                        setAgentTasks(prev => [...prev, data.result])
+                      }
+                    } catch (error) {
+                      console.error('Failed to generate chart:', error)
+                    }
+                  }}
+                  disabled={!agentActive}
+                  className="h-8 px-3 bg-primary hover:bg-primary-hover rounded-xl text-xs"
+                >
+                  <BarChart3 className="w-3 h-3 mr-1" />
+                  Chart
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/ai-agent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          action: 'execute',
+                          task: {
+                            type: 'generate_image',
+                            description: 'Generate trading analysis diagram',
+                            userQuery: 'Create a professional trading strategy diagram showing risk management, entry and exit points, and portfolio allocation with modern infographic style',
+                            parameters: {
+                              imageType: 'diagram',
+                              style: 'professional'
+                            }
+                          }
+                        })
+                      })
+                      const data = await response.json()
+                      if (data.success) {
+                        setAgentTasks(prev => [...prev, data.result])
+                      }
+                    } catch (error) {
+                      console.error('Failed to generate diagram:', error)
+                    }
+                  }}
+                  disabled={!agentActive}
+                  className="h-8 px-3 bg-secondary hover:bg-secondary/80 rounded-xl text-xs"
+                >
+                  <Palette className="w-3 h-3 mr-1" />
+                  Diagram
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/ai-agent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          action: 'execute',
+                          task: {
+                            type: 'generate_image',
+                            description: 'Generate market analysis visualization',
+                            userQuery: 'Create a comprehensive market analysis visualization showing sector performance, economic indicators, and market sentiment with clean professional design',
+                            parameters: {
+                              imageType: 'visualization',
+                              style: 'detailed'
+                            }
+                          }
+                        })
+                      })
+                      const data = await response.json()
+                      if (data.success) {
+                        setAgentTasks(prev => [...prev, data.result])
+                      }
+                    } catch (error) {
+                      console.error('Failed to generate visualization:', error)
+                    }
+                  }}
+                  disabled={!agentActive}
+                  className="h-8 px-3 bg-accent hover:bg-accent/80 rounded-xl text-xs"
+                >
+                  <Image className="w-3 h-3 mr-1" />
+                  Visual
+                </Button>
+              </div>
+            </div>
+            
+            <div className="bg-surface-elevated rounded-2xl border border-border-subtle p-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="aspect-square bg-background rounded-xl flex items-center justify-center border border-border-subtle">
+                  <div className="text-center">
+                    <BarChart3 className="w-8 h-8 text-text-tertiary mx-auto mb-2" />
+                    <p className="text-text-secondary text-xs">Chart Generation</p>
+                    <p className="text-text-tertiary text-xs">Financial charts & graphs</p>
+                  </div>
+                </div>
+                <div className="aspect-square bg-background rounded-xl flex items-center justify-center border border-border-subtle">
+                  <div className="text-center">
+                    <Palette className="w-8 h-8 text-text-tertiary mx-auto mb-2" />
+                    <p className="text-text-secondary text-xs">Diagram Creation</p>
+                    <p className="text-text-tertiary text-xs">Strategy diagrams</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <Input
+                  placeholder="Describe the image you want to generate..."
+                  className="mb-3 text-sm bg-background border-border-subtle"
+                  onKeyPress={async (e) => {
+                    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                      const prompt = e.currentTarget.value.trim()
+                      e.currentTarget.value = ''
+                      
+                      try {
+                        const response = await fetch('/api/ai-agent', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            action: 'execute',
+                            task: {
+                              type: 'generate_image',
+                              description: 'Generate custom image based on user request',
+                              userQuery: prompt,
+                              parameters: {
+                                imageType: 'creative',
+                                style: 'professional'
+                              }
+                            }
+                          })
+                        })
+                        const data = await response.json()
+                        if (data.success) {
+                          setAgentTasks(prev => [...prev, data.result])
+                        }
+                      } catch (error) {
+                        console.error('Failed to generate custom image:', error)
+                      }
+                    }
+                  }}
+                />
+                <div className="flex items-center justify-between text-xs text-text-tertiary">
+                  <span>Models: Stable Diffusion XL, Flux</span>
+                  <span>Resolution: 1024x1024</span>
+                  <span>Style: Professional</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1272,6 +1469,128 @@ export function TradingResearchAssistant({ onLogout }: TradingResearchAssistantP
                 <div>
                   <p className="text-white/80 text-xs font-medium">{agentActive ? 'Active' : 'Ready'}</p>
                   <p className="text-white/60 text-xs">{agentTasks.length} tasks completed</p>
+                </div>
+              </MiniApp>
+            </div>
+          </div>
+
+          {/* AI Image Generation */}
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-text-primary px-2">AI Image Generation</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <MiniApp
+                title="Chart Generator"
+                description="AI-powered charts"
+                icon={<BarChart3 className="w-5 h-5 text-white" />}
+                gradient="bg-purple-600"
+                onClick={async () => {
+                  if (!agentActive) {
+                    // Initialize agent first
+                    try {
+                      const response = await fetch('/api/ai-agent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'initialize' })
+                      })
+                      const data = await response.json()
+                      if (data.success) {
+                        setAgentActive(true)
+                      }
+                    } catch (error) {
+                      console.error('Failed to initialize agent:', error)
+                      return
+                    }
+                  }
+                  
+                  // Generate sample trading chart
+                  try {
+                    const response = await fetch('/api/ai-agent', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        action: 'execute',
+                        task: {
+                          type: 'generate_image',
+                          description: 'Generate financial chart',
+                          userQuery: 'Create a professional candlestick chart showing a bullish trend with support and resistance levels, volume indicators, and moving averages for stock analysis',
+                          parameters: {
+                            imageType: 'chart',
+                            style: 'financial'
+                          }
+                        }
+                      })
+                    })
+                    const data = await response.json()
+                    if (data.success) {
+                      setAgentTasks(prev => [...prev, data.result])
+                    }
+                  } catch (error) {
+                    console.error('Failed to generate chart:', error)
+                  }
+                }}
+                className="h-24"
+              >
+                <div>
+                  <p className="text-white/80 text-xs font-medium">Stable Diffusion</p>
+                  <p className="text-white/60 text-xs">Charts & graphs</p>
+                </div>
+              </MiniApp>
+
+              <MiniApp
+                title="Visual Creator"
+                description="Diagrams & graphics"
+                icon={<Palette className="w-5 h-5 text-white" />}
+                gradient="bg-violet-600"
+                onClick={async () => {
+                  if (!agentActive) {
+                    // Initialize agent first
+                    try {
+                      const response = await fetch('/api/ai-agent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'initialize' })
+                      })
+                      const data = await response.json()
+                      if (data.success) {
+                        setAgentActive(true)
+                      }
+                    } catch (error) {
+                      console.error('Failed to initialize agent:', error)
+                      return
+                    }
+                  }
+                  
+                  // Generate sample analysis diagram
+                  try {
+                    const response = await fetch('/api/ai-agent', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        action: 'execute',
+                        task: {
+                          type: 'generate_image',
+                          description: 'Generate analysis diagram',
+                          userQuery: 'Create a comprehensive trading strategy infographic showing portfolio diversification, risk management zones, entry/exit strategies, and market analysis workflow with professional design',
+                          parameters: {
+                            imageType: 'diagram',
+                            style: 'professional'
+                          }
+                        }
+                      })
+                    })
+                    const data = await response.json()
+                    if (data.success) {
+                      setAgentTasks(prev => [...prev, data.result])
+                    }
+                  } catch (error) {
+                    console.error('Failed to generate diagram:', error)
+                  }
+                }}
+                className="h-24"
+              >
+                <div>
+                  <p className="text-white/80 text-xs font-medium">Flux Model</p>
+                  <p className="text-white/60 text-xs">Infographics</p>
                 </div>
               </MiniApp>
             </div>

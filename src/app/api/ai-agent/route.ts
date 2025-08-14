@@ -4,7 +4,7 @@ import { tenHummingbirdsAgent, AgentTask } from '@/lib/ai-agent'
 interface AgentRequest {
   action: 'execute' | 'status' | 'initialize' | 'shutdown' | 'stop_stream'
   task?: {
-    type: 'research' | 'scrape' | 'monitor' | 'navigate' | 'automation' | 'live_demo'
+    type: 'research' | 'scrape' | 'monitor' | 'navigate' | 'automation' | 'live_demo' | 'generate_image'
     description: string
     userQuery: string
     targetUrl?: string

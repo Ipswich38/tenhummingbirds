@@ -3,10 +3,11 @@
 
 import { TenHummingbirdsAI } from './groq-ai'
 import { hummBrowser, HummCommand, HummObservation } from './humm-browser'
+import { tenHummingbirdsImageGenerator, ImageGenerationRequest } from './ai-image-generator'
 
 export interface AgentTask {
   id: string
-  type: 'research' | 'scrape' | 'monitor' | 'navigate' | 'automation' | 'live_demo'
+  type: 'research' | 'scrape' | 'monitor' | 'navigate' | 'automation' | 'live_demo' | 'generate_image'
   description: string
   userQuery: string
   targetUrl?: string
@@ -90,6 +91,10 @@ export class TenHummingbirdsAgent {
           
         case 'live_demo':
           result = await this.performLiveDemo(task, observations)
+          break
+          
+        case 'generate_image':
+          result = await this.performImageGeneration(task, observations)
           break
           
         default:
@@ -262,6 +267,115 @@ export class TenHummingbirdsAgent {
       url: task.targetUrl,
       monitoredData: extractResult.data,
       timestamp: Date.now()
+    }
+  }
+
+  private async performImageGeneration(task: AgentTask, observations: HummObservation[]): Promise<any> {
+    // Image generation task: Create visual content based on user query
+    
+    try {
+      console.log(`🎨 Starting image generation: ${task.description}`)
+      
+      // Use Groq AI to analyze the request and optimize the prompt
+      const analysisPrompt = `
+        Analyze this image generation request and create an optimized prompt:
+        
+        User Query: ${task.userQuery}
+        Description: ${task.description}
+        
+        Determine:
+        1. Image type (chart, graph, diagram, visualization, creative, analysis)
+        2. Style (financial, technical, minimal, detailed, professional)
+        3. Optimized prompt for AI image generation
+        4. Recommended dimensions
+        
+        Respond in this JSON format:
+        {
+          "imageType": "chart|graph|diagram|visualization|creative|analysis",
+          "style": "financial|technical|minimal|detailed|professional",
+          "optimizedPrompt": "detailed prompt for image generation",
+          "dimensions": {"width": 1024, "height": 1024},
+          "reasoning": "explanation of choices"
+        }
+      `
+      
+      const aiAnalysis = await TenHummingbirdsAI.generateResponse(analysisPrompt, {
+        analysis_type: 'strategy',
+        user_style: 'technical'
+      })
+      
+      // Parse AI response
+      let imageRequest: ImageGenerationRequest
+      try {
+        const analysisResult = JSON.parse(aiAnalysis.text)
+        imageRequest = {
+          prompt: analysisResult.optimizedPrompt || task.userQuery,
+          type: analysisResult.imageType || 'creative',
+          style: analysisResult.style || 'professional',
+          dimensions: analysisResult.dimensions || { width: 1024, height: 1024 },
+          data: task.parameters,
+          parameters: {
+            steps: 25,
+            guidance: 7.5
+          }
+        }
+      } catch (parseError) {
+        // Fallback if JSON parsing fails
+        imageRequest = {
+          prompt: task.userQuery,
+          type: 'creative',
+          style: 'professional',
+          dimensions: { width: 1024, height: 1024 },
+          parameters: {
+            steps: 20,
+            guidance: 7.5
+          }
+        }
+      }
+      
+      // Add observation for AI analysis
+      observations.push({
+        success: true,
+        data: { aiAnalysis: aiAnalysis.text, imageRequest },
+        timestamp: Date.now()
+      })
+      
+      // Generate the image
+      const imageResult = await tenHummingbirdsImageGenerator.generateImage(imageRequest)
+      
+      // Add observation for image generation
+      observations.push({
+        success: imageResult.success,
+        data: {
+          imageGenerated: imageResult.success,
+          model: imageResult.model,
+          generationTime: imageResult.generationTime,
+          metadata: imageResult.metadata
+        },
+        error: imageResult.error,
+        timestamp: Date.now()
+      })
+      
+      if (!imageResult.success) {
+        throw new Error(`Image generation failed: ${imageResult.error}`)
+      }
+      
+      return {
+        imageBase64: imageResult.imageBase64,
+        imageUrl: imageResult.imageUrl,
+        prompt: imageResult.prompt,
+        originalQuery: task.userQuery,
+        model: imageResult.model,
+        generationTime: imageResult.generationTime,
+        metadata: imageResult.metadata,
+        type: imageRequest.type,
+        style: imageRequest.style,
+        success: true
+      }
+      
+    } catch (error) {
+      console.error('Image generation failed:', error)
+      throw error
     }
   }
 
