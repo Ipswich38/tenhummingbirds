@@ -5,22 +5,32 @@ import { chromium, Browser, Page, BrowserContext } from 'playwright'
 import * as cheerio from 'cheerio'
 
 export interface HummCommand {
-  action: 'navigate' | 'click' | 'input' | 'extract' | 'scroll' | 'screenshot' | 'wait'
+  action: 'navigate' | 'click' | 'input' | 'extract' | 'scroll' | 'screenshot' | 'wait' | 'stream_start' | 'stream_stop' | 'get_viewport'
   url?: string
   selector?: string
   text?: string
-  options?: any
+  options?: Record<string, unknown>
 }
 
 export interface HummObservation {
   success: boolean
-  data?: any
+  data?: Record<string, unknown>
   screenshot?: string
   pageTitle?: string
   url?: string
   content?: string
   error?: string
   timestamp: number
+  viewport?: {
+    width: number
+    height: number
+    deviceScaleFactor: number
+  }
+  streamData?: {
+    isStreaming: boolean
+    frameRate: number
+    quality: number
+  }
 }
 
 export class HummBrowser {
@@ -28,6 +38,9 @@ export class HummBrowser {
   private context: BrowserContext | null = null
   private page: Page | null = null
   private isInitialized = false
+  private isStreaming = false
+  private streamInterval: NodeJS.Timeout | null = null
+  private streamCallback: ((screenshot: string) => void) | null = null
 
   async initialize(): Promise<void> {
     // Disable browser automation in production if environment variable is set
@@ -91,6 +104,15 @@ export class HummBrowser {
         
         case 'wait':
           return await this.waitForElement(command.selector!, command.options?.timeout)
+        
+        case 'stream_start':
+          return await this.startStreaming(command.options?.callback, command.options?.frameRate)
+        
+        case 'stream_stop':
+          return await this.stopStreaming()
+        
+        case 'get_viewport':
+          return await this.getViewportInfo()
         
         default:
           throw new Error(`Unknown command action: ${command.action}`)
@@ -279,15 +301,27 @@ export class HummBrowser {
     try {
       const pageTitle = await this.page.title()
       const url = this.page.url()
+      const viewport = this.page.viewportSize()
       
       return {
         success: true,
         pageTitle,
         url,
+        viewport: viewport ? {
+          width: viewport.width,
+          height: viewport.height,
+          deviceScaleFactor: 1
+        } : undefined,
+        streamData: {
+          isStreaming: this.isStreaming,
+          frameRate: this.streamInterval ? 2 : 0,
+          quality: 60
+        },
         data: { 
           isReady: true,
           title: pageTitle,
-          currentUrl: url 
+          currentUrl: url,
+          isStreaming: this.isStreaming
         },
         timestamp: Date.now()
       }
@@ -300,8 +334,109 @@ export class HummBrowser {
     }
   }
 
+  private async startStreaming(callback?: (screenshot: string) => void, frameRate: number = 2): Promise<HummObservation> {
+    if (!this.page) throw new Error('Page not initialized')
+    
+    try {
+      this.streamCallback = callback || null
+      this.isStreaming = true
+      
+      // Start streaming screenshots at specified frame rate
+      this.streamInterval = setInterval(async () => {
+        try {
+          const screenshot = await this.page!.screenshot({ 
+            type: 'png',
+            fullPage: false,
+            quality: 60
+          })
+          
+          const base64Screenshot = `data:image/png;base64,${screenshot.toString('base64')}`
+          
+          if (this.streamCallback) {
+            this.streamCallback(base64Screenshot)
+          }
+        } catch (error) {
+          console.error('Stream screenshot error:', error)
+        }
+      }, 1000 / frameRate)
+      
+      return {
+        success: true,
+        streamData: {
+          isStreaming: true,
+          frameRate: frameRate,
+          quality: 60
+        },
+        data: { streamingStarted: true },
+        timestamp: Date.now()
+      }
+    } catch (error) {
+      throw new Error(`Failed to start streaming: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  private async stopStreaming(): Promise<HummObservation> {
+    try {
+      this.isStreaming = false
+      
+      if (this.streamInterval) {
+        clearInterval(this.streamInterval)
+        this.streamInterval = null
+      }
+      
+      this.streamCallback = null
+      
+      return {
+        success: true,
+        streamData: {
+          isStreaming: false,
+          frameRate: 0,
+          quality: 0
+        },
+        data: { streamingStopped: true },
+        timestamp: Date.now()
+      }
+    } catch (error) {
+      throw new Error(`Failed to stop streaming: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  private async getViewportInfo(): Promise<HummObservation> {
+    if (!this.page) throw new Error('Page not initialized')
+    
+    try {
+      const viewport = this.page.viewportSize()
+      const url = this.page.url()
+      const title = await this.page.title()
+      
+      return {
+        success: true,
+        pageTitle: title,
+        url: url,
+        viewport: viewport ? {
+          width: viewport.width,
+          height: viewport.height,
+          deviceScaleFactor: 1
+        } : undefined,
+        data: {
+          viewport: viewport,
+          currentUrl: url,
+          title: title
+        },
+        timestamp: Date.now()
+      }
+    } catch (error) {
+      throw new Error(`Failed to get viewport info: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
   async close(): Promise<void> {
     try {
+      // Stop streaming if active
+      if (this.isStreaming) {
+        await this.stopStreaming()
+      }
+      
       if (this.context) await this.context.close()
       if (this.browser) await this.browser.close()
       this.isInitialized = false

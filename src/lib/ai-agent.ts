@@ -6,18 +6,19 @@ import { hummBrowser, HummCommand, HummObservation } from './humm-browser'
 
 export interface AgentTask {
   id: string
-  type: 'research' | 'scrape' | 'monitor' | 'navigate' | 'automation'
+  type: 'research' | 'scrape' | 'monitor' | 'navigate' | 'automation' | 'live_demo'
   description: string
   userQuery: string
   targetUrl?: string
   selector?: string
-  parameters?: any
+  parameters?: Record<string, unknown>
+  enableLiveView?: boolean
 }
 
 export interface AgentResult {
   taskId: string
   success: boolean
-  data?: any
+  data?: Record<string, unknown>
   observations: HummObservation[]
   summary: string
   timestamp: number
@@ -29,13 +30,16 @@ export interface AgentState {
   currentTask?: AgentTask
   browserReady: boolean
   lastActivity: number
+  isLiveStreaming: boolean
+  currentUrl?: string
 }
 
 export class TenHummingbirdsAgent {
   private state: AgentState = {
     isActive: false,
     browserReady: false,
-    lastActivity: Date.now()
+    lastActivity: Date.now(),
+    isLiveStreaming: false
   }
 
   async initialize(): Promise<void> {
@@ -82,6 +86,10 @@ export class TenHummingbirdsAgent {
           
         case 'monitor':
           result = await this.performMonitoring(task, observations)
+          break
+          
+        case 'live_demo':
+          result = await this.performLiveDemo(task, observations)
           break
           
         default:
@@ -257,6 +265,65 @@ export class TenHummingbirdsAgent {
     }
   }
 
+  private async performLiveDemo(task: AgentTask, observations: HummObservation[]): Promise<any> {
+    // Live demo task: Navigate to URL with live streaming for user to observe
+    
+    if (!task.targetUrl) {
+      throw new Error('Target URL required for live demo task')
+    }
+    
+    try {
+      // Start live streaming for real-time visualization
+      if (task.enableLiveView) {
+        const streamCommand: HummCommand = { action: 'stream_start', options: { frameRate: 2 } }
+        const streamResult = await hummBrowser.executeCommand(streamCommand)
+        observations.push(streamResult)
+        this.state.isLiveStreaming = true
+      }
+      
+      // Navigate to target URL
+      const navCommand: HummCommand = { action: 'navigate', url: task.targetUrl }
+      const navResult = await hummBrowser.executeCommand(navCommand)
+      observations.push(navResult)
+      this.state.currentUrl = task.targetUrl
+      
+      if (!navResult.success) {
+        throw new Error(`Failed to navigate to ${task.targetUrl}`)
+      }
+      
+      // Wait for page to load
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Get viewport information
+      const viewportCommand: HummCommand = { action: 'get_viewport' }
+      const viewportResult = await hummBrowser.executeCommand(viewportCommand)
+      observations.push(viewportResult)
+      
+      // Take a final screenshot
+      const screenshotCommand: HummCommand = { action: 'screenshot' }
+      const screenshotResult = await hummBrowser.executeCommand(screenshotCommand)
+      observations.push(screenshotResult)
+      
+      return {
+        url: task.targetUrl,
+        pageTitle: navResult.pageTitle,
+        screenshot: screenshotResult.screenshot,
+        viewport: viewportResult.viewport,
+        liveStreamActive: this.state.isLiveStreaming,
+        navigationSuccess: navResult.success,
+        demoCompleted: true
+      }
+      
+    } catch (error) {
+      // Stop streaming on error
+      if (this.state.isLiveStreaming) {
+        await hummBrowser.executeCommand({ action: 'stream_stop' })
+        this.state.isLiveStreaming = false
+      }
+      throw error
+    }
+  }
+
   private async generateTaskSummary(
     task: AgentTask, 
     observations: HummObservation[], 
@@ -315,11 +382,28 @@ export class TenHummingbirdsAgent {
     return await hummBrowser.getCurrentState()
   }
 
+  async stopLiveStream(): Promise<void> {
+    if (this.state.isLiveStreaming) {
+      try {
+        await hummBrowser.executeCommand({ action: 'stream_stop' })
+        this.state.isLiveStreaming = false
+        console.log('📹 Live stream stopped')
+      } catch (error) {
+        console.error('❌ Error stopping live stream:', error)
+      }
+    }
+  }
+
   async shutdown(): Promise<void> {
     try {
+      // Stop live streaming if active
+      await this.stopLiveStream()
+      
       await hummBrowser.close()
       this.state.isActive = false
       this.state.browserReady = false
+      this.state.isLiveStreaming = false
+      this.state.currentUrl = undefined
       console.log('🛑 TenHummingbirds AI Agent shutdown complete')
     } catch (error) {
       console.error('❌ Error during agent shutdown:', error)

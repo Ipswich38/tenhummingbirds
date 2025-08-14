@@ -2,14 +2,15 @@ import { NextResponse } from 'next/server'
 import { tenHummingbirdsAgent, AgentTask } from '@/lib/ai-agent'
 
 interface AgentRequest {
-  action: 'execute' | 'status' | 'initialize' | 'shutdown'
+  action: 'execute' | 'status' | 'initialize' | 'shutdown' | 'stop_stream'
   task?: {
-    type: 'research' | 'scrape' | 'monitor' | 'navigate' | 'automation'
+    type: 'research' | 'scrape' | 'monitor' | 'navigate' | 'automation' | 'live_demo'
     description: string
     userQuery: string
     targetUrl?: string
     selector?: string
-    parameters?: any
+    parameters?: Record<string, unknown>
+    enableLiveView?: boolean
   }
 }
 
@@ -74,7 +75,8 @@ export async function POST(request: Request) {
           userQuery: task.userQuery,
           targetUrl: task.targetUrl,
           selector: task.selector,
-          parameters: task.parameters
+          parameters: task.parameters,
+          enableLiveView: task.enableLiveView
         }
 
         // Execute the task
@@ -83,6 +85,14 @@ export async function POST(request: Request) {
         return NextResponse.json({
           success: true,
           result: result
+        })
+
+      case 'stop_stream':
+        await tenHummingbirdsAgent.stopLiveStream()
+        
+        return NextResponse.json({
+          success: true,
+          message: 'Live stream stopped successfully'
         })
 
       case 'shutdown':

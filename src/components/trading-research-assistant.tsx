@@ -429,6 +429,82 @@ export function TradingResearchAssistant({ onLogout }: TradingResearchAssistantP
             </div>
           </div>
 
+          {/* Live Browser View */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-text-primary">Live Browser View</h3>
+              <div className="flex gap-2">
+                <Button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/ai-agent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          action: 'execute',
+                          task: {
+                            type: 'live_demo',
+                            description: 'Live demo of Yahoo Finance',
+                            userQuery: 'Navigate to Yahoo Finance for live demo',
+                            targetUrl: 'https://finance.yahoo.com',
+                            enableLiveView: true
+                          }
+                        })
+                      })
+                      const data = await response.json()
+                      if (data.success) {
+                        setAgentTasks(prev => [...prev, data.result])
+                      }
+                    } catch (error) {
+                      console.error('Failed to start live demo:', error)
+                    }
+                  }}
+                  disabled={!agentActive}
+                  className="h-8 px-3 bg-accent hover:bg-accent/80 rounded-xl text-xs"
+                >
+                  <Globe className="w-3 h-3 mr-1" />
+                  Demo
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/ai-agent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'stop_stream' })
+                      })
+                      if (response.ok) {
+                        console.log('Live stream stopped')
+                      }
+                    } catch (error) {
+                      console.error('Failed to stop stream:', error)
+                    }
+                  }}
+                  className="h-8 px-3 bg-danger hover:bg-danger/80 rounded-xl text-xs"
+                >
+                  <Square className="w-3 h-3 mr-1" />
+                  Stop
+                </Button>
+              </div>
+            </div>
+            
+            <div className="bg-surface-elevated rounded-2xl border border-border-subtle p-4">
+              <div className="aspect-video bg-background rounded-xl flex items-center justify-center border border-border-subtle">
+                <div className="text-center">
+                  <Camera className="w-12 h-12 text-text-tertiary mx-auto mb-3" />
+                  <p className="text-text-secondary text-sm">Live Browser Stream</p>
+                  <p className="text-text-tertiary text-xs">Start a live demo to see AI agent in action</p>
+                </div>
+              </div>
+              
+              <div className="mt-3 flex items-center justify-between text-xs text-text-tertiary">
+                <span>Resolution: 1366x768</span>
+                <span>Status: Ready</span>
+                <span>FPS: 2</span>
+              </div>
+            </div>
+          </div>
+
           {/* Custom Task Input */}
           <div className="mt-4 flex-shrink-0">
             <div className="p-4 bg-surface-elevated rounded-2xl border border-border-subtle">
