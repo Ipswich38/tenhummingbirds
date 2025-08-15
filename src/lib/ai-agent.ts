@@ -70,7 +70,7 @@ export class TenHummingbirdsAgent {
       this.state.currentTask = task
       this.state.lastActivity = Date.now()
       
-      let result: any
+      let result: Record<string, unknown>
       
       switch (task.type) {
         case 'research':
@@ -133,7 +133,7 @@ export class TenHummingbirdsAgent {
     }
   }
 
-  private async performResearch(task: AgentTask, observations: HummObservation[]): Promise<any> {
+  private async performResearch(task: AgentTask, observations: HummObservation[]): Promise<Record<string, unknown>> {
     // Research task: Navigate to URL, extract information, analyze content
     
     if (!task.targetUrl) {
@@ -187,7 +187,7 @@ export class TenHummingbirdsAgent {
     }
   }
 
-  private async performScraping(task: AgentTask, observations: HummObservation[]): Promise<any> {
+  private async performScraping(task: AgentTask, observations: HummObservation[]): Promise<Record<string, unknown>> {
     // Scraping task: Navigate and extract specific data points
     
     if (!task.targetUrl) {
@@ -223,7 +223,7 @@ export class TenHummingbirdsAgent {
     }
   }
 
-  private async performNavigation(task: AgentTask, observations: HummObservation[]): Promise<any> {
+  private async performNavigation(task: AgentTask, observations: HummObservation[]): Promise<Record<string, unknown>> {
     // Navigation task: Simple page navigation and state capture
     
     if (!task.targetUrl) {
@@ -247,7 +247,7 @@ export class TenHummingbirdsAgent {
     }
   }
 
-  private async performMonitoring(task: AgentTask, observations: HummObservation[]): Promise<any> {
+  private async performMonitoring(task: AgentTask, observations: HummObservation[]): Promise<Record<string, unknown>> {
     // Monitoring task: Periodically check a page for changes
     // This is a simplified version - full implementation would use intervals
     
@@ -270,7 +270,7 @@ export class TenHummingbirdsAgent {
     }
   }
 
-  private async performImageGeneration(task: AgentTask, observations: HummObservation[]): Promise<any> {
+  private async performImageGeneration(task: AgentTask, observations: HummObservation[]): Promise<Record<string, unknown>> {
     // Image generation task: Create visual content based on user query
     
     try {
@@ -379,7 +379,7 @@ export class TenHummingbirdsAgent {
     }
   }
 
-  private async performLiveDemo(task: AgentTask, observations: HummObservation[]): Promise<any> {
+  private async performLiveDemo(task: AgentTask, observations: HummObservation[]): Promise<Record<string, unknown>> {
     // Live demo task: Navigate to URL with live streaming for user to observe
     
     if (!task.targetUrl) {
@@ -441,7 +441,7 @@ export class TenHummingbirdsAgent {
   private async generateTaskSummary(
     task: AgentTask, 
     observations: HummObservation[], 
-    result: any
+    result: Record<string, unknown>
   ): Promise<string> {
     const observationSummary = observations
       .filter(obs => obs.success)

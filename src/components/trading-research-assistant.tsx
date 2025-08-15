@@ -81,14 +81,14 @@ export function TradingResearchAssistant({ onLogout }: TradingResearchAssistantP
   
   // Watchlist and customization states
   const [watchlist, setWatchlist] = useState<string[]>(["AAPL", "TSLA", "MSFT", "GOOGL"])
-  const [alerts, setAlerts] = useState<any[]>([])
+  const [alerts, setAlerts] = useState<Record<string, unknown>[]>([])
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   
   // AI Agent states
   const [agentActive, setAgentActive] = useState(false)
   const [agentLoading, setAgentLoading] = useState(false)
-  const [agentTasks, setAgentTasks] = useState<any[]>([])
-  const [currentAgentTask, setCurrentAgentTask] = useState<any>(null)
+  const [agentTasks, setAgentTasks] = useState<Record<string, unknown>[]>([])
+  const [currentAgentTask, setCurrentAgentTask] = useState<Record<string, unknown> | null>(null)
   
   // AI Chat states for analyzer
   const [aiMessages, setAiMessages] = useState<ChatMessage[]>([])
@@ -124,7 +124,7 @@ export function TradingResearchAssistant({ onLogout }: TradingResearchAssistantP
 
       const data = await response.json()
       setRecommendation(data)
-    } catch (err) {
+    } catch {
       setError("Failed to analyze symbol. Please try again.")
     } finally {
       setLoading(false)
@@ -195,7 +195,7 @@ export function TradingResearchAssistant({ onLogout }: TradingResearchAssistantP
       }
 
       setAiMessages(prev => [...prev, aiMessage])
-    } catch (error) {
+    } catch {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         content: "I'm experiencing some technical difficulties. Please try your question again, and I'll do my best to help you with trading insights!",

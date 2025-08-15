@@ -189,7 +189,7 @@ export class HummBrowser {
     if (!this.page) throw new Error('Page not initialized')
     
     try {
-      let content: any
+      let content: string | Record<string, unknown>
       
       if (selector) {
         // Extract specific element content
@@ -226,7 +226,7 @@ export class HummBrowser {
     }
   }
 
-  private async scroll(options: any = {}): Promise<HummObservation> {
+  private async scroll(options: Record<string, unknown> = {}): Promise<HummObservation> {
     if (!this.page) throw new Error('Page not initialized')
     
     try {
